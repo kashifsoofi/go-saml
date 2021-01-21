@@ -18,7 +18,11 @@ import (
 
 var samlPostFormTemplate = templates.SAMLResponsePostForm()
 
-func (idp *IdentityProvider) NewSignedLoginResponse() (string, *Reject) {
+func (e *Reject) Error() string {
+	return fmt.Sprintf("reason: %s, error: %s", e.Reason, e.InnerError.Error())
+}
+
+func (idp *IdentityProvider) NewSignedLoginResponse() (string, error) {
 	errReject := idp.validate()
 	if errReject != nil {
 		return "", errReject
@@ -43,7 +47,7 @@ func (idp *IdentityProvider) NewSignedLoginResponse() (string, *Reject) {
 	return signedXml, nil
 }
 
-func (idp *IdentityProvider) NewSignedLogoutResponse() (string, *Reject) {
+func (idp *IdentityProvider) NewSignedLogoutResponse() (string, error) {
 	//err := idp.validate()
 	response := lib.NewLogoutResponse()
 	response.Issuer.Url = idp.Issuer
@@ -69,7 +73,7 @@ func (idp *IdentityProvider) NewSignedLogoutResponse() (string, *Reject) {
 	return signedXml, nil
 }
 
-func (idp *IdentityProvider) MetaDataResponse() (string, *Reject) {
+func (idp *IdentityProvider) MetaDataResponse() (string, error) {
 	var idpCert string
 	if idp.IDPCertFilePath != "" {
 		// IDP Cert is provided by file path.
@@ -143,7 +147,7 @@ func (idp *IdentityProvider) MetaDataResponse() (string, *Reject) {
 	return string(newMetadata), nil
 }
 
-func (idp *IdentityProvider) ValidateAuthnRequest(method string, query url.Values, payload url.Values) (*AuthnReq, *Reject) {
+func (idp *IdentityProvider) ValidateAuthnRequest(method string, query url.Values, payload url.Values) (*AuthnReq, error) {
 	samlRequestParam, err := prepareSamlRequestParam(method, query, payload, "AuthnRequest")
 	if err != nil {
 		return nil, &Reject{err, "SAML_REQUEST_NOT_VALID"}
@@ -162,7 +166,7 @@ func (idp *IdentityProvider) ValidateAuthnRequest(method string, query url.Value
 	return authnRequest, nil
 }
 
-func (idp *IdentityProvider) ValidateLogoutRequest(method string, query url.Values, payload url.Values) *Reject {
+func (idp *IdentityProvider) ValidateLogoutRequest(method string, query url.Values, payload url.Values) error {
 	samlRequestParam, err := prepareSamlRequestParam(method, query, payload, "LogoutRequest")
 	if err != nil {
 		return &Reject{err, "SAML_REQUEST_NOT_VALID"}
@@ -223,7 +227,7 @@ func (idp *IdentityProvider) AuthnRequestTTL(duration time.Duration) {
 	lib.MaxIssueDelay = duration
 }
 
-func (idp *IdentityProvider) ResponseHtml(signedXML string, requestType string) (string, *Reject) {
+func (idp *IdentityProvider) ResponseHtml(signedXML string, requestType string) (string, error) {
 	var b bytes.Buffer
 	location := idp.ACSLocation
 	if requestType == "LogoutResponse" {
@@ -244,7 +248,7 @@ func (idp *IdentityProvider) ResponseHtml(signedXML string, requestType string) 
 	return b.String(), nil
 }
 
-func (idp *IdentityProvider) validateIDPX509Certificate() *Reject {
+func (idp *IdentityProvider) validateIDPX509Certificate() error {
 	if idp.IDPCert == "" && idp.IDPCertFilePath == "" {
 		return &Reject{errors.New("SAML Configuration: IDP Certificate is empty"), "EMPTY_IDP_CERTIFICATE"}
 	}
@@ -268,7 +272,7 @@ func (idp *IdentityProvider) validateIDPX509Certificate() *Reject {
 	return nil
 }
 
-func (idp *IdentityProvider) validateSPX509Certificate() *Reject {
+func (idp *IdentityProvider) validateSPX509Certificate() error {
 	if idp.SPCert == "" && idp.SPCertFilePath == "" {
 		return &Reject{errors.New("SAML Configuration: SP Certificate is empty"), "EMPTY_IDP_CERTIFICATE"}
 	}
@@ -292,7 +296,7 @@ func (idp *IdentityProvider) validateSPX509Certificate() *Reject {
 	return nil
 }
 
-func (idp *IdentityProvider) rawIdpX509Certificate() *Reject {
+func (idp *IdentityProvider) rawIdpX509Certificate() error {
 	err := idp.validateIDPX509Certificate()
 	if err != nil {
 		return err
@@ -312,7 +316,7 @@ func (idp *IdentityProvider) rawIdpX509Certificate() *Reject {
 	return nil
 }
 
-func (idp *IdentityProvider) rawSPX509Certificate() *Reject {
+func (idp *IdentityProvider) rawSPX509Certificate() error {
 	err := idp.validateSPX509Certificate()
 	if err != nil {
 		return err
@@ -332,7 +336,7 @@ func (idp *IdentityProvider) rawSPX509Certificate() *Reject {
 	return nil
 }
 
-func (idp *IdentityProvider) parseIdpX509Certificate() *Reject {
+func (idp *IdentityProvider) parseIdpX509Certificate() error {
 	err := idp.validateIDPX509Certificate()
 	if err != nil {
 		return err
@@ -341,7 +345,7 @@ func (idp *IdentityProvider) parseIdpX509Certificate() *Reject {
 	return nil
 }
 
-func (idp *IdentityProvider) parseSpX509Certificate() *Reject {
+func (idp *IdentityProvider) parseSpX509Certificate() error {
 	err := idp.validateSPX509Certificate()
 	if err != nil {
 		return err
@@ -350,7 +354,7 @@ func (idp *IdentityProvider) parseSpX509Certificate() *Reject {
 	return nil
 }
 
-func (idp *IdentityProvider) parsePrivateKey() *Reject {
+func (idp *IdentityProvider) parsePrivateKey() error {
 	if idp.IDPKey == "" && idp.IDPKeyFilePath == "" {
 		return &Reject{errors.New("SAML Configuration: IDP Private Key is empty"), "EMPTY_IDP_PRIVATE_KEY"}
 	}
@@ -383,7 +387,7 @@ func (idp *IdentityProvider) parsePrivateKey() *Reject {
 	return nil
 }
 
-func (idp *IdentityProvider) validate() *Reject {
+func (idp *IdentityProvider) validate() error {
 	err := idp.parseIdpX509Certificate()
 	if err != nil {
 		return err

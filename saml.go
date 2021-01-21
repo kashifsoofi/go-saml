@@ -65,8 +65,8 @@ type MetadataBinding struct {
 }
 
 type Reject struct {
-	Error  error
-	Reason string
+	InnerError error
+	Reason     string
 }
 
 type AuthnReq struct {
